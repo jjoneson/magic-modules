@@ -8,23 +8,28 @@ import (
 	"github.com/nasa9084/go-openapi"
 )
 
-type ProductMetadata struct {
-	// PackagePath is the path to the package relative to the dcl
-	PackagePath string
-	// PackageName is the namespace of the package within the dcl
-	// the PackageName is normally a lowercase variant of ProductName
-	PackageName string
-	// ProductName is the case accounted (snake case) name of the product
-	// that the resource belongs to.
-	ProductName string
-	// DCL name for the product. Used for correctly casing product name for
-	// references within the DCL (BasePath etc)
-	DCLProductName string
+type Filepath string
+
+type DCLPackageName string
+
+func (d DCLPackageName) lowercase() string {
+	return string(d)
 }
 
-var productOverrides map[string]Overrides = make(map[string]Overrides, 0)
+type ProductMetadata struct {
+	// PackagePath is the path to the package relative to the dcl
+	PackagePath Filepath
+	// PackageName is the namespace of the package within the dcl
+	// the PackageName is normally a lowercase variant of ProductName
+	PackageName DCLPackageName
+	// ProductName is the case accounted (snake case) name of the product
+	// that the resource belongs to.
+	ProductName SnakeCaseProductName
+}
 
-func GetProductMetadataFromDocument(document *openapi.Document, packagePath string) *ProductMetadata {
+var productOverrides map[Filepath]Overrides = make(map[Filepath]Overrides, 0)
+
+func GetProductMetadataFromDocument(document *openapi.Document, packagePath Filepath) *ProductMetadata {
 	// load overrides for product
 	if _, ok := productOverrides[packagePath]; !ok {
 		productOverrides[packagePath] = loadOverrides(packagePath, "tpgtools_product.yaml")
@@ -34,13 +39,12 @@ func GetProductMetadataFromDocument(document *openapi.Document, packagePath stri
 	return productMetadata
 }
 
-func NewProductMetadata(packagePath, productName string) *ProductMetadata {
-	packageName := strings.Split(packagePath, "/")[0]
+func NewProductMetadata(packagePath Filepath, productName string) *ProductMetadata {
+	packageName := strings.Split(string(packagePath), "/")[0]
 	return &ProductMetadata{
-		PackagePath:    packagePath,
-		PackageName:    packageName,
-		ProductName:    jsonToSnakeCase(productName),
-		DCLProductName: productName,
+		PackagePath: packagePath,
+		PackageName: DCLPackageName(packageName),
+		ProductName: SnakeCaseProductName(jsonToSnakeCase(productName)),
 	}
 }
 
@@ -52,24 +56,36 @@ func (pm *ProductMetadata) ShouldWriteProductBasePath() bool {
 	return !bp.Skip
 }
 
-func (pm *ProductMetadata) BasePathIdentifierSnakeUpper() string {
-	return strings.ToUpper(pm.BasePathIdentifierSnake())
+type BasePathOverrideNameSnakeCase string
+
+func (b BasePathOverrideNameSnakeCase) snakecase() string {
+	return string(b)
 }
 
-func (pm *ProductMetadata) BasePathIdentifierSnake() string {
-	bp := pm.ProductBasePathDetails()
-	if bp != nil && bp.BasePathIdentifier != "" {
-		return bp.BasePathIdentifier
-	}
-	return pm.ProductName
+func (b BasePathOverrideNameSnakeCase) ToUpper() string {
+	return strings.ToUpper(string(b))
 }
 
-func (pm *ProductMetadata) BasePathIdentifier() string {
+func (b BasePathOverrideNameSnakeCase) ToTitle() string {
+	title := snakeToTitleCase(b).titlecase()
+	// Got to special case the capitalization of "OS" in "OSConfig", for base paths specifically,
+	// because of interop with MMv1.
+	if strings.HasPrefix(string(b), "os") {
+		return "OS" + title[2:]
+	}
+	return title
+}
+
+func (s SnakeCaseProductName) ToTitle() string {
+	return snakeToTitleCase(s).titlecase()
+}
+
+func (pm *ProductMetadata) BasePathIdentifier() BasePathOverrideNameSnakeCase {
 	bp := pm.ProductBasePathDetails()
 	if bp != nil && bp.BasePathIdentifier != "" {
-		return snakeToTitleCase(bp.BasePathIdentifier)
+		return BasePathOverrideNameSnakeCase(bp.BasePathIdentifier)
 	}
-	return pm.ProductType()
+	return BasePathOverrideNameSnakeCase(pm.ProductName)
 }
 
 func (pm *ProductMetadata) ProductBasePathDetails() *ProductBasePathDetails {
@@ -94,7 +110,7 @@ func (pm *ProductMetadata) ProductBasePathDetails() *ProductBasePathDetails {
 // or case sensitve product name from the product definition
 // we will also check if there is an override for the product title
 // and utilize that if avalible and set.
-func getProductTitle(documentTitle, packagePath string) string {
+func getProductTitle(documentTitle string, packagePath Filepath) string {
 	overrides, ok := productOverrides[packagePath]
 	if !ok {
 		glog.Fatalf("product overrides should be loaded already for packagePath %s", packagePath)
@@ -122,13 +138,7 @@ func getProductTitle(documentTitle, packagePath string) string {
 	return title
 }
 
-// ProductType is the title-cased product name of a resource. For example,
-// "NetworkServices".
-func (pm *ProductMetadata) ProductType() string {
-	return pm.DCLProductName
-}
-
-func (pm *ProductMetadata) DocsSection() string {
+func (pm *ProductMetadata) DocsSection() miscellaneousNameLowercase {
 	overrides, ok := productOverrides[pm.PackagePath]
 	if !ok {
 		glog.Fatalf("product overrides should be loaded already for packagePath %s", pm.PackagePath)
@@ -139,21 +149,17 @@ func (pm *ProductMetadata) DocsSection() string {
 		glog.Fatalf("could not parse override %v", err)
 	}
 	if ptOk {
-		return pt.DocsSection
+		return miscellaneousNameLowercase(pt.DocsSection)
 	}
 
-	return pm.ProductType()
+	return miscellaneousNameLowercase(pm.PackageName)
 }
 
-// ProductNameUpper is the all caps snakecase product name of a resource.
-// For example, "NETWORK_SERVICES".
-func (pm *ProductMetadata) ProductNameUpper() string {
-	return strings.ToUpper(pm.ProductName)
-}
+type DCLPackage string
 
 // DCLPackage is the package name of the DCL client library to use for this
 // resource. For example, the Package "access_context_manager" would have a
 // DCLPackage of "accesscontextmanager"
-func (pm *ProductMetadata) DCLPackage() string {
-	return strings.Replace(pm.PackagePath, "_", "", -1)
+func (pm *ProductMetadata) DCLPackage() DCLPackage {
+	return DCLPackage(strings.Replace(string(pm.PackagePath), "_", "", -1))
 }
