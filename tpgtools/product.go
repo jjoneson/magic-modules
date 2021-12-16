@@ -62,22 +62,22 @@ func (b BasePathOverrideNameSnakeCase) snakecase() string {
 	return string(b)
 }
 
-func (b BasePathOverrideNameSnakeCase) ToUpper() string {
-	return strings.ToUpper(string(b))
+func (b BasePathOverrideNameSnakeCase) ToUpper() RenderedString {
+	return RenderedString(strings.ToUpper(string(b)))
 }
 
-func (b BasePathOverrideNameSnakeCase) ToTitle() string {
+func (b BasePathOverrideNameSnakeCase) ToTitle() RenderedString {
 	title := snakeToTitleCase(b).titlecase()
 	// Got to special case the capitalization of "OS" in "OSConfig", for base paths specifically,
 	// because of interop with MMv1.
 	if strings.HasPrefix(string(b), "os") {
-		return "OS" + title[2:]
+		return RenderedString("OS" + title[2:])
 	}
-	return title
+	return RenderedString(title)
 }
 
-func (s SnakeCaseProductName) ToTitle() string {
-	return snakeToTitleCase(s).titlecase()
+func (s SnakeCaseProductName) ToTitle() RenderedString {
+	return RenderedString(snakeToTitleCase(s).titlecase())
 }
 
 func (pm *ProductMetadata) BasePathIdentifier() BasePathOverrideNameSnakeCase {
@@ -138,7 +138,7 @@ func getProductTitle(documentTitle string, packagePath Filepath) string {
 	return title
 }
 
-func (pm *ProductMetadata) DocsSection() miscellaneousNameLowercase {
+func (pm *ProductMetadata) DocsSection() miscellaneousNameTitleCase {
 	overrides, ok := productOverrides[pm.PackagePath]
 	if !ok {
 		glog.Fatalf("product overrides should be loaded already for packagePath %s", pm.PackagePath)
@@ -149,10 +149,10 @@ func (pm *ProductMetadata) DocsSection() miscellaneousNameLowercase {
 		glog.Fatalf("could not parse override %v", err)
 	}
 	if ptOk {
-		return miscellaneousNameLowercase(pt.DocsSection)
+		return miscellaneousNameTitleCase(pt.DocsSection)
 	}
 
-	return miscellaneousNameLowercase(pm.PackageName)
+	return miscellaneousNameTitleCase(pm.ProductName.ToTitle())
 }
 
 type DCLPackage string

@@ -294,7 +294,7 @@ func (r Resource) TitleCasePackageName() RenderedString {
 	return RenderedString(snakeToTitleCase(r.ProductName()).titlecase())
 }
 
-func (r Resource) DocsSection() miscellaneousNameLowercase {
+func (r Resource) DocsSection() miscellaneousNameTitleCase {
 	return r.productMetadata.DocsSection()
 }
 
