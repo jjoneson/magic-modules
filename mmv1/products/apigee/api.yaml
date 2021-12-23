@@ -262,6 +262,48 @@ objects:
           Description of the environment.
         required: false
         input: true
+      - !ruby/object:Api::Type::Enum
+        name: 'deploymentType'
+        description: |
+          Deployment type supported by the environment. 
+          The deployment type can be set when creating the environment and cannot be changed. 
+          
+          Options:
+            DEPLOYMENT_TYPE_UNSPECIFIED: Deployment type not specified.
+            PROXY: Proxy deployment enables you to develop and deploy API proxies using Apigee on Google Cloud. This cannot currently be combined with the CONFIGURABLE API proxy type.
+            ARCHIVE: Archive deployment enables you to develop API proxies locally then deploy an archive of your API proxy configuration to an environment in Apigee on Google Cloud. 
+              You will be prevented from performing a subset of actions within the environment, including:
+              - Managing the deployment of API proxy or shared flow revisions
+              - Creating, updating, or deleting resource files
+              - Creating, updating, or deleting target servers
+        values:
+          - "DEPLOYMENT_TYPE_UNSPECIFIED"
+          - "ARCHIVE"
+          - "PROXY"
+        default_value: :PROXY
+        required: false
+        input: true
+        min_version: beta
+      - !ruby/object:Api::Type::Enum
+        name: 'apiProxyType'
+        description: |
+          API Proxy type supported by the environment.
+          The type can be set when creating the Environment and cannot be changed.
+          
+          Options:
+            API_PROXY_TYPE_UNSPECIFIED: API proxy type not specified.
+            PROGRAMMABLE: Programmable API Proxies enable you to develop APIs with highly flexible behavior using bundled policy configuration and 
+              one or more programming languages to describe complex sequential and/or conditional flows of logic.
+            CONFIGURABLE: Configurable API Proxies enable you to develop efficient APIs using simple configuration while complex execution control flow logic is handled by Apigee.
+              This type only works with the ARCHIVE deployment type and cannot be combined with the PROXY deployment type.
+        values:
+          - "API_PROXY_TYPE_UNSPECIFIED"
+          - "PROGRAMMABLE"
+          - "CONFIGURABLE"
+        default_value: :PROGRAMMABLE
+        required: false        
+        input: true
+        min_version: beta
     references: !ruby/object:Api::Resource::ReferenceLinks
       guides:
         'Creating an environment':
